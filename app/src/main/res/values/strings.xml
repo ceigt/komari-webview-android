@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">komari</string>
+    <string name="home">首页</string>
+    <string name="refresh">刷新</string>
+    <string name="settings">设置</string>
+    <string name="server_address">Komari 主控地址</string>
+    <string name="server_address_help">请输入完整地址。省略协议时默认使用 HTTPS。</string>
+    <string name="save">保存并打开</string>
+    <string name="invalid_address">请输入有效的 HTTP 或 HTTPS 地址</string>
+    <string name="invalid_certificate">HTTPS 证书无效，已停止加载</string>
+    <string name="load_failed">页面加载失败：%1$s</string>
+    <string name="no_file_picker">没有可用的文件选择器</string>
+    <string name="no_handler">没有应用可以处理此链接</string>
+</resources>

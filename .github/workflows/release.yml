@@ -1,0 +1,52 @@
+name: Build and release Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build installable APK
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk komari-v1.0.0.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: komari-v1.0.0
+          path: komari-v1.0.0.apk
+          if-no-files-found: error
+
+      - name: Create or update v1.0.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            gh release upload v1.0.0 komari-v1.0.0.apk --clobber
+          else
+            gh release create v1.0.0 komari-v1.0.0.apk               --title "komari Android 1.0.0"               --notes "首次发布：首次启动填写 Komari 主控地址，支持登录状态保存、网页导航、刷新、文件选择和安全 HTTPS 校验。APK 使用 Android 调试签名，适合个人侧载。"
+          fi
