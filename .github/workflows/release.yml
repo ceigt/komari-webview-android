@@ -32,21 +32,21 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk komari-v1.0.0.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk komari-v1.0.1.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: komari-v1.0.0
-          path: komari-v1.0.0.apk
+          name: komari-v1.0.1
+          path: komari-v1.0.1.apk
           if-no-files-found: error
 
-      - name: Create or update v1.0.0 release
+      - name: Create or update v1.0.1 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v1.0.0 >/dev/null 2>&1; then
-            gh release upload v1.0.0 komari-v1.0.0.apk --clobber
+          if gh release view v1.0.1 >/dev/null 2>&1; then
+            gh release upload v1.0.1 komari-v1.0.1.apk --clobber
           else
-            gh release create v1.0.0 komari-v1.0.0.apk               --title "komari Android 1.0.0"               --notes "首次发布：首次启动填写 Komari 主控地址，支持登录状态保存、网页导航、刷新、文件选择和安全 HTTPS 校验。APK 使用 Android 调试签名，适合个人侧载。"
+            gh release create v1.0.1 komari-v1.0.1.apk               --title "komari Android 1.0.0"               --notes "修复 Android 15/API 35 Edge-to-Edge 系统栏适配，避免顶部工具栏与状态栏、刘海或挖孔区域重叠，并为底部导航栏保留安全距离。APK 使用 Android 调试签名，适合个人侧载。"
           fi
