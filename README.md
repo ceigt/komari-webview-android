@@ -30,13 +30,13 @@ https://monitor.example.com
 gradle :app:assembleDebug
 ```
 
-生成的 APK 位于 `app/build/outputs/apk/debug/`。
+本地无签名材料时建议构建 Debug APK，产物位于 `app/build/outputs/apk/debug/`。正式 Release 由 GitHub Actions 使用仓库 Secrets 构建。
 
 ## 安全说明
 
 应用不会收集或转发面板数据。主控地址保存在本机 SharedPreferences 中。为兼容未配置 TLS 的自托管面板，应用允许显式 HTTP 地址，但强烈建议使用有效 HTTPS 证书；证书校验失败时应用会终止加载。
 
-GitHub Actions 发布的 APK 使用 Android 调试签名，适合个人侧载使用，不适合提交到应用商店。
+从 v1.1.0 起，GitHub Actions 发布的 APK 使用固定正式签名。Keystore 和密码通过 GitHub Actions Secrets 注入，私钥不会进入公开仓库或 Release。请永久保管线下签名备份；丢失后无法继续覆盖升级同一应用。
 
 ## 名称与图标
 
