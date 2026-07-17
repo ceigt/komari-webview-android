@@ -52,6 +52,28 @@ jobs:
       - name: Build signed release APK
         run: gradle --no-daemon :app:assembleRelease
 
+      - name: Verify fixed signing certificate
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::Android apksigner was not found"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee "$RUNNER_TEMP/apk-signature.txt"
+          APK_CERT_SHA256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-signature.txt" | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          KEYSTORE_CERT_SHA256="$(keytool -exportcert \
+            -keystore "$ANDROID_KEYSTORE_PATH" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            | sha256sum | awk '{print $1}')"
+          if [ -z "$APK_CERT_SHA256" ] || [ "$APK_CERT_SHA256" != "$KEYSTORE_CERT_SHA256" ]; then
+            echo "::error::APK certificate does not match the fixed release keystore"
+            exit 1
+          fi
+          echo "Verified fixed release certificate SHA-256: $APK_CERT_SHA256"
+
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk komari-v1.1.0.apk
 
