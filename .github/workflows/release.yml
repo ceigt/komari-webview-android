@@ -46,7 +46,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view v1.0.1 >/dev/null 2>&1; then
+            gh release edit v1.0.1 --title "komari Android 1.0.1"
             gh release upload v1.0.1 komari-v1.0.1.apk --clobber
           else
-            gh release create v1.0.1 komari-v1.0.1.apk               --title "komari Android 1.0.0"               --notes "修复 Android 15/API 35 Edge-to-Edge 系统栏适配，避免顶部工具栏与状态栏、刘海或挖孔区域重叠，并为底部导航栏保留安全距离。APK 使用 Android 调试签名，适合个人侧载。"
+            gh release create v1.0.1 komari-v1.0.1.apk               --title "komari Android 1.0.1"               --notes "修复 Android 15/API 35 Edge-to-Edge 系统栏适配，避免顶部工具栏与状态栏、刘海或挖孔区域重叠，并为底部导航栏保留安全距离。APK 使用 Android 调试签名，适合个人侧载。"
           fi
