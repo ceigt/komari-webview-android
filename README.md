@@ -36,8 +36,6 @@ gradle :app:assembleDebug
 
 应用不会收集或转发面板数据。主控地址保存在本机 SharedPreferences 中。为兼容未配置 TLS 的自托管面板，应用允许显式 HTTP 地址，但强烈建议使用有效 HTTPS 证书；证书校验失败时应用会终止加载。
 
-从 v1.1.0 起，GitHub Actions 发布的 APK 使用固定正式签名。Keystore 和密码通过 GitHub Actions Secrets 注入，私钥不会进入公开仓库或 Release。请永久保管线下签名备份；丢失后无法继续覆盖升级同一应用。
-
 ## 名称与图标
 
 Komari 名称及应用图标来源于 [komari-monitor/komari-web](https://github.com/komari-monitor/komari-web)。Komari 原项目采用 MIT License。本仓库不是 Komari 官方 Android 客户端。
