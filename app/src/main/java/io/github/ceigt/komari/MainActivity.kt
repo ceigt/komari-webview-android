@@ -1,7 +1,6 @@
 package io.github.ceigt.komari
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
@@ -27,6 +26,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -40,6 +40,11 @@ class MainActivity : AppCompatActivity() {
     private val preferences by lazy { getSharedPreferences(PREFS_NAME, MODE_PRIVATE) }
     private var homeUrl: String? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private val webBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            webView.goBack()
+        }
+    }
 
     private val fileChooserLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -55,12 +60,18 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         buildUi()
         configureWebView()
+        onBackPressedDispatcher.addCallback(this, webBackCallback)
 
         homeUrl = preferences.getString(KEY_URL, null)
         if (homeUrl == null) {
             showAddressDialog(required = true)
         } else {
-            webView.loadUrl(homeUrl!!)
+            val pageState = savedInstanceState?.getBundle(KEY_WEB_STATE)
+                ?.takeIf { savedInstanceState?.getString(KEY_URL) == homeUrl }
+            if (pageState == null || webView.restoreState(pageState) == null) {
+                webView.loadUrl(homeUrl!!)
+            }
+            webBackCallback.isEnabled = webView.canGoBack()
         }
     }
 
@@ -75,7 +86,11 @@ class MainActivity : AppCompatActivity() {
                 WindowInsetsCompat.Type.systemBars() or
                     WindowInsetsCompat.Type.displayCutout()
             )
-            view.setPadding(safeArea.left, safeArea.top, safeArea.right, safeArea.bottom)
+            val keyboard = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            view.setPadding(
+                safeArea.left, safeArea.top, safeArea.right,
+                maxOf(safeArea.bottom, keyboard.bottom)
+            )
             windowInsets
         }
 
@@ -152,7 +167,6 @@ class MainActivity : AppCompatActivity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            databaseEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
             allowFileAccess = false
             allowContentAccess = true
@@ -160,7 +174,7 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             mediaPlaybackRequiresUserGesture = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            userAgentString = "$userAgentString komari-android/1.0.0"
+            userAgentString = "$userAgentString komari-android/${BuildConfig.VERSION_NAME}"
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 safeBrowsingEnabled = true
             }
@@ -170,11 +184,17 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
-            ): Boolean = handleUri(request.url)
+            ): Boolean {
+                val isWebLink = request.url.scheme?.lowercase() in setOf("http", "https")
+                if (isWebLink) return false
+                // Embedded frames and automatic redirects must not launch other apps.
+                if (!request.isForMainFrame || !request.hasGesture()) return true
+                return handleUri(request.url)
+            }
 
-            @Deprecated("Deprecated in Java")
-            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
-                handleUri(Uri.parse(url))
+            override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                webBackCallback.isEnabled = view.canGoBack()
+            }
 
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 progressBar.visibility = View.VISIBLE
@@ -257,6 +277,12 @@ class MainActivity : AppCompatActivity() {
             "intent" -> {
                 try {
                     val intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME)
+                    intent.addCategory(Intent.CATEGORY_BROWSABLE)
+                    intent.action = Intent.ACTION_VIEW
+                    intent.component = null
+                    intent.selector = null
+                    // A web page may request a browsable activity, never a permission grant.
+                    intent.flags = 0
                     startActivity(intent)
                 } catch (_: Exception) {
                     Toast.makeText(this, R.string.no_handler, Toast.LENGTH_SHORT).show()
@@ -274,6 +300,8 @@ class MainActivity : AppCompatActivity() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.no_handler, Toast.LENGTH_SHORT).show()
+        } catch (_: SecurityException) {
             Toast.makeText(this, R.string.no_handler, Toast.LENGTH_SHORT).show()
         }
     }
@@ -327,9 +355,23 @@ class MainActivity : AppCompatActivity() {
         return candidate
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+    override fun onSaveInstanceState(outState: Bundle) {
+        val pageState = Bundle()
+        webView.saveState(pageState)
+        outState.putBundle(KEY_WEB_STATE, pageState)
+        outState.putString(KEY_URL, homeUrl)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webView.onResume()
+    }
+
+    override fun onPause() {
+        webView.onPause()
+        CookieManager.getInstance().flush()
+        super.onPause()
     }
 
     override fun onDestroy() {
@@ -347,5 +389,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val PREFS_NAME = "komari_preferences"
         private const val KEY_URL = "server_url"
+        private const val KEY_WEB_STATE = "web_state"
     }
 }
