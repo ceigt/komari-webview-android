@@ -50,7 +50,7 @@ jobs:
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/komari-release.jks" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
-        run: gradle --no-daemon :app:assembleRelease
+        run: gradle --no-daemon :app:lintRelease :app:assembleRelease
 
       - name: Verify fixed signing certificate
         shell: bash
@@ -75,26 +75,33 @@ jobs:
           echo "Verified fixed release certificate SHA-256: $APK_CERT_SHA256"
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk komari-v1.1.0.apk
+        shell: bash
+        run: |
+          VERSION="$(jq -r '.elements[0].versionName' app/build/outputs/apk/release/output-metadata.json)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "komari-v$VERSION.apk"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: komari-v1.1.0
-          path: komari-v1.1.0.apk
+          name: komari-v${{ env.VERSION }}
+          path: komari-v${{ env.VERSION }}.apk
           if-no-files-found: error
 
-      - name: Create or update v1.1.0 release
+      # Branch dispatches build signed review artifacts without publishing a release.
+      - name: Create or update release
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v1.1.0 >/dev/null 2>&1; then
-            gh release edit v1.1.0 --title "komari Android 1.1.0"
-            gh release upload v1.1.0 komari-v1.1.0.apk --clobber
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            gh release edit "v$VERSION" --title "komari Android $VERSION"
+            gh release upload "v$VERSION" "komari-v$VERSION.apk" --clobber
           else
-            gh release create v1.1.0 komari-v1.1.0.apk \
-              --title "komari Android 1.1.0" \
-              --notes "首次采用固定正式签名发布。后续正式版本可直接覆盖升级；从 v1.0.x 调试签名版本迁移时必须先卸载旧版。包含 Android 15/API 35 系统栏安全区域修复。"
+            gh release create "v$VERSION" "komari-v$VERSION.apk" \
+              --target "$GITHUB_SHA" \
+              --title "komari Android $VERSION" \
+              --notes "适配 Android 自适应桌面图标；恢复页面导航状态；修复键盘遮挡与返回导航；限制网页自动唤起外部应用。沿用固定正式签名，可从 v1.1.0 直接覆盖升级。"
           fi
 
       - name: Remove restored keystore

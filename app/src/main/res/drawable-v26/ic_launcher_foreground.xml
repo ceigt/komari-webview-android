@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A 66 dp foreground inside the 108 dp adaptive canvas keeps the character safe
+     under circular, rounded-square and other launcher masks. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="19.444444%">
+    <bitmap android:src="@drawable/komari_icon"
+        android:gravity="fill"
+        android:filter="true" />
+</inset>
